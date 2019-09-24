@@ -1,0 +1,108 @@
+const int maxn = 131072;
+
+struct segtree
+{
+    int T[maxn * 2];
+    segtree()
+    {
+        fill(T, T + maxn * 2, 0);
+    }
+    void update(int p, int x)
+    {
+        int v = p + maxn;
+        T[v] += x;
+        v >>= 1;
+        while(v > 0)
+        {
+            T[v] = max(T[v << 1], T[v << 1 | 1]);
+            v >>= 1;
+        }
+        return;
+    }
+    int query(int l, int r)
+    {
+        l += maxn;
+        r += maxn;
+        int ans = 0;
+        while(l < r)
+        {
+            if (l % 2 == 1) {ans = max(T[l], ans), ++l;}
+            if (r % 2 == 0) {ans = max(T[r], ans), --r;}
+            l >>= 1;
+            r >>= 1;
+        }
+        if (l == r) ans = max(ans, T[l]);
+        return ans;
+    }
+};
+
+segtree t;
+vector <int> g[maxn];
+int sz[maxn];
+int nxt[maxn];
+int way[maxn]; //number of BOSS of the way
+int id[maxn];
+int d[maxn];
+int counter = 0;
+
+void dfscalc(int v, int pr, int depth)
+{
+    d[v] = depth;
+    sz[v] = 1;
+    nxt[v] = pr;
+    for(int to : g[v])
+    {
+        if (to == pr) continue;
+        dfscalc(to, v, depth + 1);
+        sz[v] += sz[to];
+    }
+    return;
+}
+
+void build(int v, int pr)
+{
+    id[v] = counter++;
+    int num = -1; //number of maximum
+    for(int to : g[v])
+    {
+        if (to == pr) continue;
+        if (num == -1 || sz[to] > sz[num]) num = to;
+    }
+    if (num > -1)
+    {
+        way[num] = way[v];
+        build(num, v);
+        for(int to : g[v])
+        {
+            if (to == pr || to == num) continue;
+            way[to] = to;
+            build(to, v);
+        }
+    }
+    return;
+}
+
+int query(int v, int u)
+{
+    int ans = 0;
+    bool f = true;
+    while(way[v] != way[u])
+    {
+        if (d[way[v]] < d[way[u]]) swap(u, v);
+        if (v == way[v])
+        {
+            if (f) ans = max(ans, t.T[id[v] + maxn]);
+            v = nxt[v];
+            f = true;
+        }
+        else
+        {
+            ans = max(ans, t.query(id[way[v]], id[v]));
+            v = way[v];
+            f = false;
+        }
+    }
+    if (d[v] < d[u]) swap(v, u);
+    ans = max(ans, t.query(id[u], id[v]));
+    return ans;
+}
